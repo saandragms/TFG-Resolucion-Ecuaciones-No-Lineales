@@ -1,86 +1,74 @@
+# import math
+import metodos as mt
 import sympy as sp
-import pandas as pd
-import numpy as np
-from graficas import plot_convergencia
-from metodos import metodo_biseccion, metodo_newton_raphson, metodo_secante # Asegúrate de importar tu método
+from tablar import tabla
 
-def ejecutar_analisis(f_str, metodo_func, args_metodo, usa_derivada=False, generar_grafica=False):
-    """
-    Generar tabla LaTeX y (opcionalmente) gráficas adaptándose a tu metodos.py
-    """
+
+def run(f_str : str, metodo : str, cond_iniciales : list, genera_tabla = True):
+
+    dicc_metodos = {"Bisección": mt.biseccion,
+               "Newton-Raphson": mt.newton_raphson,
+               "Secante": mt.secante,
+               "Regula-Falsi": mt.regula_falsi,
+               "Newton Modificado": mt.newton_modificado,
+                "Steffensen": mt.steffensen
+               }
+    
+    # Convertir la función a formato numérico  
     x = sp.symbols('x')
-    expr_f = sp.sympify(f_str)
-    f_num = sp.lambdify(x, expr_f, 'numpy')
+    f_sp = sp.sympify(f_str)
+    f_num = sp.lambdify(x, f_sp, 'numpy')
 
-    if usa_derivada:
-        expr_df = sp.diff(expr_f, x)
-        df_num = sp.lambdify(x, expr_df, 'numpy')
-        res = metodo_func(f=f_num, df=df_num, **args_metodo)
-    else: res = metodo_func(f=f_num,  **args_metodo)
-    
-    # 4. Formatear las columnas
-    puntos_formateados = [f"{p:.6f}" for p in res['historial_puntos']]
-    errores_formateados = [f"{e:.2e}" for e in res['historial_errores']]
-    
-    # 5. Crear el DataFrame
-    df = pd.DataFrame({
-        'n': range(1, len(puntos_formateados) + 1),
-        'p_n': puntos_formateados,
-        'Error (|p_n - p_{n-1}|)': errores_formateados
-    })
-    
-    # 6. Truncar tablas largas con puntos suspensivos
-    if len(df) > 10:
-        df_head = df.head(4).copy()
-        df_tail = df.tail(4).copy()
-        df_medio = pd.DataFrame([{"n": "\\vdots", "p_n": "\\vdots", "Error (|p_n - p_{n-1}|)": "\\vdots"}])
-        df = pd.concat([df_head, df_medio, df_tail], ignore_index=True)
-        
-    # 7. Generar LaTeX
-    nombre_metodo = res['nombre'] # Coge la key "nombre" de tu diccionario
-    
-    codigo_latex = (
-        df.style
-        .hide(axis="index")
-        .to_latex(
-            caption=f"Convergencia del método de {nombre_metodo} para $f(x)={f_str}$.",
-            label=f"tab:analisis_{nombre_metodo.lower()}",
-            hrules=True,
-            column_format="c c c"
-        )
-    )
-    
-    # Centrar en LaTeX
-    codigo_latex = codigo_latex.replace("\\begin{table}", "\\begin{table}[h!]\n\\centering")
-    
-    print(codigo_latex)
-    print("\n" + "%" * 50 + "\n")
-    
-    # 8. Generar gráfica
-    if generar_grafica:
-        plot_convergencia(f_str, res, guardar_pdf=True)
+    # Si el método requiere derivada, calcularla y convertirla a formato numérico.
+    if metodo in ["Newton-Raphson", "Newton Modificado"]:
+        # Calcular derivada
+        df_sp = sp.diff(f_sp)
+        df_num = sp.lambdify(x, df_sp, 'numpy')
+        # Si el metodo requiere segunda derivada, calcularla y convertirla a formato numérico.
+        if metodo in ["Newton Modificado",]: 
+            ddf_sp = sp.diff(df_sp)
+            ddf_num = sp.lambdify(x, ddf_sp, 'numpy')
+            cond_iniciales.insert(0,ddf_num)
+        cond_iniciales.insert(0,df_num)
+
+    # Ejecutar el método seleccionado con la función y las condiciones iniciales.
+    res = dicc_metodos[metodo](f_num, *cond_iniciales)
+
+    # Mensaje de convergencia o no convergencia
+    print(res["mensaje"])
+
+    # Si se ha alcanzado la convergencia, mostrar resultados y generar tabla.
+    if res["convergencia"]:
+        print(f"Se ha utilizado el método de {res['nombre']} para aproximar la solución de la ecuación {f_str} = 0.")
+        print(f"La solución aproximada calculada es: {res['raiz']}.")
+        print(f"Se ha calculado en {res['iteraciones']} iteraciones.\n")
+
+        # Generar tabla de resultados. Por defecto, se muestra por consola. 
+        # Añadir el argumento guardar_archivo=True, para guardar en un archivo de texto. 
+        if genera_tabla:
+            tabla(f_str, resultados=res, guardar_archivo=False)
+
 
 if __name__ == "__main__":
     # --- ZONA DE CONFIGURACIÓN ---
-    MI_FUNCION = "x**2 - 2"
+    # Función a resolver. Tipo string. Ejemplo: "cos(x) - x"
+    MI_FUNCION = "cos(x) - x"
+   
+    # Nombre de los métodos disponibles. Tipo string. 
+    metodos = ["Bisección", "Newton-Raphson", "Secante", "Regula-Falsi", "Newton Modificado", "Steffensen"]
+    MI_METODO = metodos[5]
 
-    MI_METODO = metodo_newton_raphson
+    """Argumentos específicos. Datos iniciales para cada método. Tipo lista. 
+       Bisección: [a, b]
+       Newton-Raphson: [x0]
+       Secante: [x0, x1]
+       Regula-Falsi: [a, b]
+       Newton Modificado: [x0]
+       Steffensen: [x0]"""
     
-    if MI_METODO == metodo_newton_raphson:  
-        derivada = True
-    else: derivada = False
-        
+    MIS_ARGUMENTOS = [2,]
 
-    # Argumentos específicos.
-    MIS_ARGUMENTOS = {
-        "x0": 1.0,
-        "tol": 1e-8
-    }
+    #Función para testear cada método. Recibe la función, el método a usar y los argumentos específicos.
+    run(f_str=MI_FUNCION, metodo=MI_METODO, cond_iniciales=MIS_ARGUMENTOS)
 
-    ejecutar_analisis(
-        f_str=MI_FUNCION,
-        metodo_func=MI_METODO, 
-        args_metodo=MIS_ARGUMENTOS, 
-        usa_derivada=derivada,
-        generar_grafica=True
-    )
+    
