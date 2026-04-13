@@ -1,6 +1,6 @@
---- Tabla de la ecuaci髇 cos(x) - x = 0 ---
------ M閠odo de Steffensen ----
-|  Iteraci髇  |  Aproximaci髇 x_n  |  Evaluaci髇 f(x_n)  |  Error de aproximaci髇  |
+--- Tabla de la ecuaci贸n cos(x) - x = 0 ---
+----- M茅todo de Steffensen ----
+|  Iteraci贸n  |  Aproximaci贸n x_n  |  Evaluaci贸n f(x_n)  |  Error de aproximaci贸n  |
 |:-----------:|:------------------:|:-------------------:|:-----------------------:|
 |      0      |         2          |      -2.41615       |           nan           |
 |      1      |      0.441994      |      0.461906       |         1.55801         |
